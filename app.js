@@ -174,7 +174,10 @@ function invitesView() {
   return `<div class="page">
   <div class="page-head">
     <div><h1>Invites</h1><p id="inv-sub"></p></div>
-    <button class="btn btn-primary" id="add">Add invite</button>
+    <div class="page-actions">
+      <button class="btn btn-secondary" id="export">Export Yes list</button>
+      <button class="btn btn-primary" id="add">Add invite</button>
+    </div>
   </div>
   <div class="toolbar">
     <input class="field" id="q" type="search" placeholder="Search customer, contact or number" value="${esc(state.query)}">
@@ -234,6 +237,29 @@ function dataChanged() {
   renderList();
 }
 
+/* ---------- Export ---------- */
+// Door list of everyone who said Yes, as a CSV that opens in Excel.
+function exportYes() {
+  const yes = state.invites.filter(x => x.response === 'yes')
+    .sort((a, b) => (a.customer || '').localeCompare(b.customer || '') || (a.contact || '').localeCompare(b.contact || ''));
+  if (!yes.length) return toast('No one has said Yes yet.');
+  const cell = v => {
+    let t = String(v ?? '');
+    if (/^[=+\-@]/.test(t)) t = "'" + t;   // stop Excel treating names as formulas
+    return '"' + t.replace(/"/g, '""') + '"';
+  };
+  const tel = v => v ? '="' + String(v).replace(/"/g, '') + '"' : '';   // keep leading 0 and +27
+  const rows = [['Customer', 'Contact', 'Telephone', 'Account Manager', 'Arrived'].map(cell).join(',')]
+    .concat(yes.map(x => [cell(x.customer), cell(x.contact), tel(x.telephone), cell(x.account_manager || 'Not assigned'), cell('')].join(',')));
+  const blob = new Blob(['\ufeff' + rows.join('\r\n')], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `Founder Breakfast - Yes list - ${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  toast(`Exported ${yes.length} ${yes.length === 1 ? 'guest' : 'guests'}.`);
+}
+
 /* ---------- Events ---------- */
 document.addEventListener('submit', async e => {
   if (e.target.id !== 'login') return;
@@ -248,6 +274,7 @@ document.addEventListener('submit', async e => {
 document.addEventListener('click', async e => {
   const t = e.target;
   if (t.closest('#signout')) { await sb.auth.signOut(); return; }
+  if (t.closest('#export')) { exportYes(); return; }
   if (t.closest('#add')) {
     state.resp = 'all'; state.query = ''; state.am = '';
     renderMain();
