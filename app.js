@@ -3,7 +3,7 @@ import { SUPABASE_URL, SUPABASE_ANON_KEY, ALLOWED_DOMAINS } from './config.js';
 const DOMAINS_TEXT = ALLOWED_DOMAINS.map(d => '@' + d).join(' or ');
 const allowedEmail = email => ALLOWED_DOMAINS.some(d => email.toLowerCase().endsWith('@' + d));
 
-const AMS = ['Rene Minnie','Dylan Lockwood','Thabo Lekoloane','Shanndrae Markgraff','Brendon Atwell','Francois Crafford','Zane Mansfield','Atreya Christiany','Antoinette Zlatarov','Daryn de Villiers','Henry Holt'];
+const AMS = ['Rene Minnie','Dylan Lockwood','Thabo Lekoloane','Denwille Smith','Shanndrae Markgraff','Brendon Atwell','Francois Crafford','Zane Mansfield','Atreya Christiany','Antoinette Zlatarov','Daryn de Villiers','Henry Holt'];
 const EVENT = new Date(2026, 9, 22);
 const CUTOFF = new Date(2026, 9, 9);
 const RESP = [['yes','Yes'],['maybe','Maybe'],['no','No']];
