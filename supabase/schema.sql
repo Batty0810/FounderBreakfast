@@ -67,6 +67,7 @@ create table if not exists private.settings (
   id            int primary key default 1 check (id = 1),
   team_password text not null
 );
+alter table private.settings enable row level security;
 
 create or replace function public.check_team_account() returns trigger
 language plpgsql security definer set search_path = '' as $$
