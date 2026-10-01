@@ -90,10 +90,11 @@ function loginView(msg, isErr) {
   <div class="login-form">
     <form id="login">
       <h2>Sign in</h2>
-      <p class="note">Enter your ${esc(DOMAINS_TEXT)} email. We will send you a sign-in link.</p>
+      <p class="note">Enter your ${esc(DOMAINS_TEXT)} email and the team password.</p>
       ${msg ? `<div class="alert ${isErr ? 'err' : ''}">${esc(msg)}</div>` : ''}
       <label>Work email<input class="field" id="email" type="email" required autocomplete="email" placeholder="name@${esc(ALLOWED_DOMAINS[0])}"></label>
-      <button class="btn btn-primary" type="submit">Send sign-in link</button>
+      <label>Team password<input class="field" id="password" type="password" required autocomplete="current-password"></label>
+      <button class="btn btn-primary" type="submit">Sign in</button>
     </form>
   </div>
 </div>`;
@@ -266,9 +267,17 @@ document.addEventListener('submit', async e => {
   e.preventDefault();
   const email = $('#email').value.trim().toLowerCase();
   if (!allowedEmail(email)) return render(`Use your ${DOMAINS_TEXT} email address.`, true);
-  const btn = e.target.querySelector('button'); btn.disabled = true; btn.textContent = 'Sending…';
-  const { error } = await sb.auth.signInWithOtp({ email, options: { emailRedirectTo: location.origin + location.pathname } });
-  render(error ? error.message : `Check ${email} for your sign-in link.`, !!error);
+  const password = $('#password').value;
+  const btn = e.target.querySelector('button'); btn.disabled = true; btn.textContent = 'Signing in…';
+  // Sign in, or create the account the first time this email is used.
+  // Supabase only accepts the account if the password matches the team password.
+  const fail = () => render('That email or team password is not right. Check with the event organiser.', true);
+  const { error } = await sb.auth.signInWithPassword({ email, password });
+  if (!error) return;
+  if (!/invalid login credentials/i.test(error.message)) return render(error.message, true);
+  const { data, error: upErr } = await sb.auth.signUp({ email, password });
+  if (upErr) return fail();
+  if (!data.session) return render('Sign-in is not finished being set up: turn off "Confirm email" in Supabase.', true);
 });
 
 document.addEventListener('click', async e => {
