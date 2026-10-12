@@ -5,8 +5,9 @@ const allowedEmail = email => ALLOWED_DOMAINS.some(d => email.toLowerCase().ends
 
 const AMS = ['Rene Minnie','Dylan Lockwood','Thabo Lekoloane','Denwille Smit','Shanndrae Markgraff','Brendon Atwell','Francois Crafford','Zane Mansfield','Atreya Christiany','Antoinette Zlatarov','Daryn de Villiers','Henry Holt'];
 const EVENT = new Date(2026, 9, 22);
-const CUTOFF = new Date(2026, 9, 9);
-const RESP = [['yes','Yes'],['maybe','Maybe'],['no','No']];
+const CUTOFF = new Date(2026, 9, 16);
+// confirmed = has formally RSVP'd; yes = wants to attend but has not RSVP'd yet.
+const RESP = [['confirmed','Confirmed'],['yes','Yes'],['maybe','Maybe'],['no','No']];
 const DEMO = !SUPABASE_URL || SUPABASE_URL.includes('YOUR-') || !SUPABASE_ANON_KEY || SUPABASE_ANON_KEY.includes('YOUR-');
 const DEMO_KEY = 'founder-breakfast-demo-invites';
 
@@ -70,8 +71,8 @@ async function refresh() {
 /* ---------- Stats ---------- */
 function stats(list) {
   const c = r => list.filter(x => (x.response || null) === r).length;
-  const total = list.length, yes = c('yes'), maybe = c('maybe'), no = c('no');
-  return { total, yes, maybe, no, awaiting: total - yes - maybe - no };
+  const total = list.length, confirmed = c('confirmed'), yes = c('yes'), maybe = c('maybe'), no = c('no');
+  return { total, confirmed, yes, maybe, no, awaiting: total - confirmed - yes - maybe - no };
 }
 const pct = (n, t) => t ? Math.round(n / t * 100) + '%' : '0%';
 
@@ -85,7 +86,7 @@ function loginView(msg, isErr) {
       <h1>Nymbis Cloud Founder Breakfast</h1>
       <p style="margin:0;color:var(--ink-100)">The Island Club, Century City</p>
     </div>
-    <p style="margin:0;font-size:13px;color:var(--ink-100)">Invite tracker for Account Managers · RSVP cut-off 9 October 2026</p>
+    <p style="margin:0;font-size:13px;color:var(--ink-100)">Invite tracker for Account Managers · RSVP cut-off 16 October 2026</p>
   </div>
   <div class="login-form">
     <form id="login">
@@ -121,14 +122,14 @@ function heroView() {
     <p>The Island Club, Century City</p>
   </div>
   <div class="countdowns">
-    <div class="cd"><div class="cd-l">RSVP cut-off · 9 Oct</div><div class="cd-v"><b>${dc >= 0 ? dc : 'Closed'}</b><span>${dc >= 0 ? plural(dc) + ' left' : ''}</span></div></div>
+    <div class="cd"><div class="cd-l">RSVP cut-off · 16 Oct</div><div class="cd-v"><b>${dc >= 0 ? dc : 'Closed'}</b><span>${dc >= 0 ? plural(dc) + ' left' : ''}</span></div></div>
     <div class="cd"><div class="cd-l">Event · 22 Oct</div><div class="cd-v"><b>${de >= 0 ? de : 'Done'}</b><span>${de >= 0 ? plural(de) + ' to go' : ''}</span></div></div>
   </div>
 </section>`;
 }
 
 const barView = (s, cls = '') => `<div class="bar ${cls}">
-  <i class="c-yes" style="flex:${s.yes} 0 0"></i><i class="c-maybe" style="flex:${s.maybe} 0 0"></i><i class="c-no" style="flex:${s.no} 0 0"></i>${cls ? `<i class="c-await" style="flex:${s.awaiting} 0 0"></i>` : `<i style="flex:${s.awaiting} 0 0"></i>`}
+  <i class="c-confirmed" style="flex:${s.confirmed} 0 0"></i><i class="c-yes" style="flex:${s.yes} 0 0"></i><i class="c-maybe" style="flex:${s.maybe} 0 0"></i><i class="c-no" style="flex:${s.no} 0 0"></i>${cls ? `<i class="c-await" style="flex:${s.awaiting} 0 0"></i>` : `<i style="flex:${s.awaiting} 0 0"></i>`}
 </div>`;
 
 function dashboardView() {
@@ -141,10 +142,11 @@ function dashboardView() {
 <div class="page">
   <div class="stats num">
     <div class="stat"><div class="stat-l">Invited</div><div class="stat-v">${s.total}</div><div class="stat-s">customers</div></div>
-    <div class="stat yes"><div class="stat-l">Yes</div><div class="stat-v">${s.yes}</div><div class="stat-s">${pct(s.yes, s.total)} of invited</div></div>
+    <div class="stat confirmed"><div class="stat-l">Confirmed</div><div class="stat-v">${s.confirmed}</div><div class="stat-s">${pct(s.confirmed, s.total)} · RSVP received</div></div>
+    <div class="stat yes"><div class="stat-l">Yes</div><div class="stat-v">${s.yes}</div><div class="stat-s">${pct(s.yes, s.total)} · not RSVP'd yet</div></div>
     <div class="stat maybe"><div class="stat-l">Maybe</div><div class="stat-v">${s.maybe}</div><div class="stat-s">${pct(s.maybe, s.total)} of invited</div></div>
     <div class="stat no"><div class="stat-l">No</div><div class="stat-v">${s.no}</div><div class="stat-s">${pct(s.no, s.total)} of invited</div></div>
-    <div class="stat await"><div class="stat-l">Awaiting response</div><div class="stat-v">${s.awaiting}</div><div class="stat-s">follow up before 9 Oct</div></div>
+    <div class="stat await"><div class="stat-l">Awaiting response</div><div class="stat-v">${s.awaiting}</div><div class="stat-s">follow up before 16 Oct</div></div>
   </div>
   <div class="panel" style="padding:24px">
     <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-bottom:14px;flex-wrap:wrap"><h2 style="font-size:16px;margin:0">Response split</h2><span class="muted">${s.total - s.awaiting} of ${s.total} responded</span></div>
@@ -152,11 +154,11 @@ function dashboardView() {
   </div>
   <div class="panel">
     <div class="panel-h"><h2>By Account Manager</h2>
-      <div class="legend"><span><i class="c-yes"></i>Yes</span><span><i class="c-maybe"></i>Maybe</span><span><i class="c-no"></i>No</span><span><i class="c-await"></i>Awaiting</span></div>
+      <div class="legend"><span><i class="c-confirmed"></i>Confirmed</span><span><i class="c-yes"></i>Yes</span><span><i class="c-maybe"></i>Maybe</span><span><i class="c-no"></i>No</span><span><i class="c-await"></i>Awaiting</span></div>
     </div>
-    <div class="am-row head"><div>Account Manager</div><div class="r">Invited</div><div class="r">Yes</div><div class="r">Maybe</div><div class="r">No</div><div class="r">Awaiting</div><div></div></div>
+    <div class="am-row head"><div>Account Manager</div><div class="r">Invited</div><div class="r"><span class="ab-full">Confirmed</span><span class="ab-short">Conf.</span></div><div class="r">Yes</div><div class="r">Maybe</div><div class="r">No</div><div class="r">Awaiting</div><div></div></div>
     ${per.map(p => `<div class="am-row num">
-      <div style="font-weight:500">${esc(p.name)}</div><div class="r">${p.total}</div><div class="r t-yes">${p.yes}</div><div class="r t-maybe">${p.maybe}</div><div class="r t-no">${p.no}</div><div class="r t-await">${p.awaiting}</div>
+      <div style="font-weight:500">${esc(p.name)}</div><div class="r">${p.total}</div><div class="r t-confirmed">${p.confirmed}</div><div class="r t-yes">${p.yes}</div><div class="r t-maybe">${p.maybe}</div><div class="r t-no">${p.no}</div><div class="r t-await">${p.awaiting}</div>
       <div style="width:${p.total / max * 100}%">${p.total ? barView(p, 'sm') : ''}</div>
     </div>`).join('')}
   </div>
@@ -176,7 +178,7 @@ function invitesView() {
   <div class="page-head">
     <div><h1>Invites</h1><p id="inv-sub"></p></div>
     <div class="page-actions">
-      <button class="btn btn-secondary" id="export">Export Yes list</button>
+      <button class="btn btn-secondary" id="export">Export guest list</button>
       <button class="btn btn-primary" id="add">Add invite</button>
     </div>
   </div>
@@ -209,7 +211,7 @@ function renderList() {
   const s = stats(state.invites);
   const list = filtered();
   $('#inv-sub').textContent = `${s.total} customers invited · ${s.awaiting} awaiting response`;
-  $('#chips').innerHTML = [['all','All',s.total],['yes','Yes',s.yes],['maybe','Maybe',s.maybe],['no','No',s.no],['none','Awaiting',s.awaiting]]
+  $('#chips').innerHTML = [['all','All',s.total],['confirmed','Confirmed',s.confirmed],['yes','Yes',s.yes],['maybe','Maybe',s.maybe],['no','No',s.no],['none','Awaiting',s.awaiting]]
     .map(([k, l, n]) => `<button class="chip ${state.resp === k ? 'on' : ''}" data-filter="${k}">${l} · ${n}</button>`).join('');
   $('#list').innerHTML = list.length ? list.map(rowView).join('')
     : `<div class="empty">${state.invites.length ? 'No invites match these filters.' : 'No invites yet. Select Add invite to start the list.'}</div>`;
@@ -239,26 +241,33 @@ function dataChanged() {
 }
 
 /* ---------- Export ---------- */
-// Door list of everyone who said Yes, as a CSV that opens in Excel.
-function exportYes() {
-  const yes = state.invites.filter(x => x.response === 'yes')
-    .sort((a, b) => (a.customer || '').localeCompare(b.customer || '') || (a.contact || '').localeCompare(b.contact || ''));
-  if (!yes.length) return toast('No one has said Yes yet.');
+// Door list of everyone Confirmed or Yes, as a CSV that opens in Excel. Confirmed are listed first.
+const STATUS = { confirmed: 'Confirmed', yes: 'Yes - not RSVP\'d yet' };
+function exportGuests() {
+  const yes = state.invites.filter(x => STATUS[x.response])
+    .sort((a, b) => (a.response === b.response ? 0 : a.response === 'confirmed' ? -1 : 1)
+      || (a.customer || '').localeCompare(b.customer || '') || (a.contact || '').localeCompare(b.contact || ''));
+  if (!yes.length) return toast('No one is Confirmed or Yes yet.');
+  const n = yes.filter(x => x.response === 'confirmed').length;
   const cell = v => {
     let t = String(v ?? '');
     if (/^[=+\-@]/.test(t)) t = "'" + t;   // stop Excel treating names as formulas
     return '"' + t.replace(/"/g, '""') + '"';
   };
   const tel = v => v ? '="' + String(v).replace(/"/g, '') + '"' : '';   // keep leading 0 and +27
-  const rows = [['Customer', 'Contact', 'Telephone', 'Account Manager', 'Arrived'].map(cell).join(',')]
-    .concat(yes.map(x => [cell(x.customer), cell(x.contact), tel(x.telephone), cell(x.account_manager || 'Not assigned'), cell('')].join(',')));
+  const rows = [['Status', 'Customer', 'Contact', 'Telephone', 'Account Manager', 'Arrived'].map(cell).join(',')]
+    .concat(yes.map(x => [cell(STATUS[x.response]), cell(x.customer), cell(x.contact), tel(x.telephone), cell(x.account_manager || 'Not assigned'), cell('')].join(',')))
+    .concat(['', [cell('Key'), cell('')].join(','),
+      [cell('Confirmed'), cell('Has RSVP\'d: attendance confirmed')].join(','),
+      [cell('Yes - not RSVP\'d yet'), cell('Wants to attend but has not RSVP\'d yet: follow up')].join(','),
+      '', [cell('Totals'), cell(`${n} Confirmed, ${yes.length - n} Yes, ${yes.length} in all`)].join(',')]);
   const blob = new Blob(['\ufeff' + rows.join('\r\n')], { type: 'text/csv;charset=utf-8' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = `Founder Breakfast - Yes list - ${new Date().toISOString().slice(0, 10)}.csv`;
+  a.download = `Founder Breakfast - Guest list - ${new Date().toISOString().slice(0, 10)}.csv`;
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-  toast(`Exported ${yes.length} ${yes.length === 1 ? 'guest' : 'guests'}.`);
+  toast(`Exported ${yes.length} ${yes.length === 1 ? 'guest' : 'guests'}: ${n} Confirmed, ${yes.length - n} Yes.`);
 }
 
 /* ---------- Events ---------- */
@@ -283,7 +292,7 @@ document.addEventListener('submit', async e => {
 document.addEventListener('click', async e => {
   const t = e.target;
   if (t.closest('#signout')) { await sb.auth.signOut(); return; }
-  if (t.closest('#export')) { exportYes(); return; }
+  if (t.closest('#export')) { exportGuests(); return; }
   if (t.closest('#add')) {
     state.resp = 'all'; state.query = ''; state.am = '';
     renderMain();

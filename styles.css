@@ -43,12 +43,13 @@ input,select,button{font-family:inherit;font-variation-settings:'wdth' 112;font-
 
 /* Dashboard */
 .page{padding:32px clamp(16px,4vw,40px) 48px;display:flex;flex-direction:column;gap:24px;max-width:1280px;margin:0 auto}
-.stats{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:16px}
+.stats{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:16px}
 .stat{background:#fff;border:1px solid var(--border-1);border-radius:12px;padding:20px}
 .stat-l{font-size:13px;color:var(--fg-2)}
 .stat-v{font-family:var(--font-display);font-weight:500;font-size:40px;line-height:1.1;margin-top:8px}
 .stat-s{font-size:12px;color:var(--ink-500);margin-top:4px}
-.stat.yes{border-top:4px solid #420A38}.stat.yes .stat-v{color:#420A38}
+.stat.confirmed{border-top:4px solid #420A38}.stat.confirmed .stat-v{color:#420A38}
+.stat.yes{border-top:4px solid #B43AA3}.stat.yes .stat-v{color:#900080}
 .stat.maybe{border-top:4px solid #FF583C}.stat.maybe .stat-v{color:#C2371F}
 .stat.no{border-top:4px solid #FF1A40}.stat.no .stat-v{color:#D1002C}
 .stat.await{border-style:dashed;border-color:var(--border-2)}.stat.await .stat-v{color:var(--ink-500)}
@@ -59,14 +60,15 @@ input,select,button{font-family:inherit;font-variation-settings:'wdth' 112;font-
 .bar{display:flex;height:14px;border-radius:999px;overflow:hidden;background:var(--ink-100)}
 .bar.sm{height:8px}
 .bar i{display:block;transition:flex-grow .2s ease-out}
-.c-yes{background:#420A38}.c-maybe{background:#FF583C}.c-no{background:#FF1A40}.c-await{background:var(--ink-200)}
+.c-confirmed{background:#420A38}.c-yes{background:#B43AA3}.c-maybe{background:#FF583C}.c-no{background:#FF1A40}.c-await{background:var(--ink-200)}
 .legend{display:flex;gap:16px;font-size:12px;color:var(--fg-2);flex-wrap:wrap}
 .legend span{display:flex;align-items:center;gap:6px}
 .legend i{width:10px;height:10px;border-radius:3px;display:block}
-.am-row{display:grid;grid-template-columns:220px 70px 60px 60px 60px 80px minmax(0,1fr);gap:0 16px;align-items:center;padding:11px 24px;border-top:1px solid var(--ink-100);font-size:14px}
+.am-row{display:grid;grid-template-columns:220px 70px 84px 60px 60px 60px 80px minmax(0,1fr);gap:0 16px;align-items:center;padding:11px 24px;border-top:1px solid var(--ink-100);font-size:14px}
 .am-row.head{background:var(--ink-50);font-size:12px;font-weight:600;color:var(--ink-500);text-transform:uppercase;letter-spacing:.05em;padding:10px 24px;border-top:1px solid var(--border-1);border-bottom:1px solid var(--border-1)}
 .am-row .r{text-align:right}
-.t-yes{color:#420A38;font-weight:600}.t-maybe{color:#C2371F}.t-no{color:#D1002C}.t-await{color:var(--ink-500)}
+.ab-short{display:none}
+.t-confirmed{color:#420A38;font-weight:600}.t-yes{color:#900080;font-weight:600}.t-maybe{color:#C2371F}.t-no{color:#D1002C}.t-await{color:var(--ink-500)}
 
 /* Invites */
 .page-head{display:flex;align-items:flex-end;gap:16px;flex-wrap:wrap}
@@ -80,7 +82,7 @@ input,select,button{font-family:inherit;font-variation-settings:'wdth' 112;font-
 .chips{display:flex;gap:6px;margin-left:auto;flex-wrap:wrap}
 .chip{white-space:nowrap;height:34px;padding:0 14px;border-radius:999px;border:1px solid var(--border-1);background:#fff;color:var(--fg-2);font-size:13px;font-weight:600;cursor:pointer}
 .chip.on{background:var(--nymbis-plum);border-color:var(--nymbis-plum);color:#fff}
-.inv{display:grid;grid-template-columns:210px minmax(0,1.2fr) minmax(0,1fr) 170px 250px 36px;gap:0 12px;align-items:center;padding:8px 16px;border-top:1px solid var(--ink-100)}
+.inv{display:grid;grid-template-columns:210px minmax(0,1.2fr) minmax(0,1fr) 170px 320px 36px;gap:0 12px;align-items:center;padding:8px 16px;border-top:1px solid var(--ink-100)}
 .inv.head{background:var(--ink-50);font-size:12px;font-weight:600;color:var(--ink-500);text-transform:uppercase;letter-spacing:.05em;padding:12px 16px;border-top:0;border-bottom:1px solid var(--border-1)}
 .inv.head + .inv{border-top:0}
 .cell{display:flex;flex-direction:column;min-width:0}
@@ -94,7 +96,8 @@ select.edit{padding:0 6px;cursor:pointer}
 .resp{display:flex;gap:4px;padding:3px;background:var(--ink-50);border:1px solid var(--border-1);border-radius:999px;width:max-content}
 .resp button{height:28px;padding:0 16px;border:0;border-radius:999px;background:transparent;color:var(--fg-2);font-size:13px;font-weight:600;cursor:pointer}
 .resp button:hover{background:var(--ink-100)}
-.resp button.on-yes{background:#420A38;color:#fff}
+.resp button.on-confirmed{background:#420A38;color:#fff}
+.resp button.on-yes{background:#B43AA3;color:#fff}
 .resp button.on-maybe{background:#FF583C;color:#fff}
 .resp button.on-no{background:#FF1A40;color:#fff}
 .del{width:32px;height:32px;border:0;border-radius:8px;background:transparent;color:var(--ink-400);cursor:pointer;display:flex;align-items:center;justify-content:center}
@@ -126,7 +129,7 @@ select.edit{padding:0 6px;cursor:pointer}
 
 @media (max-width:1100px){
   .stats{grid-template-columns:repeat(3,minmax(0,1fr))}
-  .am-row{grid-template-columns:minmax(0,1fr) 56px 44px 50px 44px 64px;padding:11px 16px}
+  .am-row{grid-template-columns:minmax(0,1fr) 56px 76px 44px 50px 44px 64px;padding:11px 16px}
   .am-row > :last-child{display:none}
   .inv{grid-template-columns:160px minmax(0,1.2fr) minmax(0,1fr) 130px auto 36px}
   .resp button{padding:0 12px}
@@ -139,7 +142,7 @@ select.edit{padding:0 6px;cursor:pointer}
   .cell-l{display:block}
   .cell.c-cust,.cell.c-am,.cell.c-resp{grid-column:1/-1}
   .cell.c-cust{order:-1;padding-right:36px}
-  .resp{width:100%;display:grid;grid-template-columns:1fr 1fr 1fr}
+  .resp{width:100%;display:grid;grid-template-columns:1fr 1fr;border-radius:20px}
   .resp button{height:40px;font-size:14px}
   .del{position:absolute;top:8px;right:8px}
   .empty{grid-column:1/-1;background:#fff;border:1px solid var(--border-1);border-radius:12px}
@@ -157,8 +160,9 @@ select.edit{padding:0 6px;cursor:pointer}
   .stats{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
   .stat:first-child{grid-column:1/-1}
   .stat-v{font-size:30px}
-  .am-row{grid-template-columns:minmax(0,1fr) 40px 36px 44px 36px}
-  .am-row > :nth-child(6){display:none}
+  .am-row{grid-template-columns:minmax(0,1fr) 44px 36px 44px 36px}
+  .am-row > :nth-child(2),.am-row > :nth-child(7){display:none}
+  .ab-full{display:none}.ab-short{display:inline}
   .page{padding:16px 16px 40px;gap:16px}
   .page-actions{width:100%}
   .page-actions .btn{flex:1}

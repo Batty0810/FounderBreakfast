@@ -7,11 +7,16 @@ create table if not exists public.invites (
   customer        text not null default '',
   contact         text not null default '',
   telephone       text not null default '',
-  response        text check (response in ('yes', 'no', 'maybe')),
+  response        text check (response in ('confirmed', 'yes', 'no', 'maybe')),
   created_at      timestamptz not null default now(),
   updated_at      timestamptz not null default now(),
   updated_by      text
 );
+
+-- Allow Confirmed (has RSVP'd) on databases created before it was added.
+alter table public.invites drop constraint if exists invites_response_check;
+alter table public.invites add constraint invites_response_check
+  check (response in ('confirmed', 'yes', 'no', 'maybe'));
 
 -- Record who last changed each invite, and when.
 create or replace function public.touch_invite() returns trigger
