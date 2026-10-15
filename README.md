@@ -2,8 +2,8 @@
 
 Track the customers invited to the Founder Breakfast on 22 October 2026 at the Island Club, Century City (9h30 – 12h00). The RSVP cut-off is 16 October 2026.
 
-- **Dashboard**: the number of customers invited, plus Confirmed, Yes, Maybe, No and Awaiting counts, countdowns to the cut-off and the event, and a breakdown for each Account Manager.
-- **Invites**: an editable list with Account Manager, customer, contact, telephone and response. Changes save automatically and appear live for everyone.
+- **Dashboard**: the number of customers invited, plus Confirmed, Yes, Maybe, No and Awaiting counts, countdowns to the cut-off and the event, a catering count of dietary requirements, and a breakdown for each Account Manager.
+- **Invites**: an editable list with Account Manager, customer, contact, telephone, dietary requirement and response, plus a **Staff** list with company, name, contact number and dietary requirement. Changes save automatically and appear live for everyone.
 - Works on desktop and mobile.
 
 The site is hosted free on **GitHub Pages**. Data is stored in **Supabase** (free tier), so the list is the same for everyone on any machine. Sign-in is with a work email and a shared team password, and is restricted to `@nymbis.cloud` and `@voxtelecom.co.za` addresses.
@@ -34,7 +34,9 @@ The site is hosted free on **GitHub Pages**. Data is stored in **Supabase** (fre
 - Select **Confirmed**, **Yes**, **Maybe** or **No** to record a response. Select it again to clear it.
   - **Confirmed**: the customer has RSVP'd.
   - **Yes**: the customer wants to attend but has not RSVP'd yet.
-- **Export guest list** downloads everyone who is Confirmed or Yes as a spreadsheet (CSV), Confirmed first, with a Status column and a key explaining each status.
+- **Invites → Add staff** adds a staff member attending. Fill in their company, name and contact number.
+- Choose a dietary requirement for each customer and staff member: No Preference, Vegetarian, Vegan, Halaal, Kosher, Gluten-free or Dairy-free. The Dashboard totals these for catering (everyone Confirmed or Yes, plus staff).
+- **Export guest list** downloads everyone who is Confirmed or Yes, then staff, as a spreadsheet (CSV), Confirmed first, with Status and Dietary columns and a key explaining each status.
 - Filter by Account Manager or by response, or search by name or number.
 
 ## Notes

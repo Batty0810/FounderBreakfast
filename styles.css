@@ -68,11 +68,16 @@ input,select,button{font-family:inherit;font-variation-settings:'wdth' 112;font-
 .am-row.head{background:var(--ink-50);font-size:12px;font-weight:600;color:var(--ink-500);text-transform:uppercase;letter-spacing:.05em;padding:10px 24px;border-top:1px solid var(--border-1);border-bottom:1px solid var(--border-1)}
 .am-row .r{text-align:right}
 .ab-short{display:none}
+.diets{display:flex;flex-wrap:wrap;gap:8px;padding:0 24px 20px}
+.diet{display:flex;align-items:baseline;gap:8px;padding:8px 14px;border:1px solid var(--border-1);border-radius:999px;font-size:13px;color:var(--fg-2)}
+.diet b{font-size:16px;color:var(--nymbis-plum)}
+.diet.await{border-style:dashed;border-color:var(--border-2)}.diet.await b{color:var(--ink-500)}
 .t-confirmed{color:#420A38;font-weight:600}.t-yes{color:#900080;font-weight:600}.t-maybe{color:#C2371F}.t-no{color:#D1002C}.t-await{color:var(--ink-500)}
 
 /* Invites */
 .page-head{display:flex;align-items:flex-end;gap:16px;flex-wrap:wrap}
 .page-head h1{font-size:28px;line-height:1.1;margin:0}
+.page-head h2{font-size:22px;line-height:1.1;margin:16px 0 0}
 .page-head p{margin:6px 0 0;font-size:14px;color:var(--ink-500)}
 .page-actions{margin-left:auto;display:flex;gap:10px;flex-wrap:wrap}
 .toolbar{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
@@ -82,9 +87,10 @@ input,select,button{font-family:inherit;font-variation-settings:'wdth' 112;font-
 .chips{display:flex;gap:6px;margin-left:auto;flex-wrap:wrap}
 .chip{white-space:nowrap;height:34px;padding:0 14px;border-radius:999px;border:1px solid var(--border-1);background:#fff;color:var(--fg-2);font-size:13px;font-weight:600;cursor:pointer}
 .chip.on{background:var(--nymbis-plum);border-color:var(--nymbis-plum);color:#fff}
-.inv{display:grid;grid-template-columns:210px minmax(0,1.2fr) minmax(0,1fr) 170px 320px 36px;gap:0 12px;align-items:center;padding:8px 16px;border-top:1px solid var(--ink-100)}
+.inv{display:grid;grid-template-columns:180px minmax(0,1.2fr) minmax(0,1fr) 140px 150px 320px 36px;gap:0 12px;align-items:center;padding:8px 16px;border-top:1px solid var(--ink-100)}
 .inv.head{background:var(--ink-50);font-size:12px;font-weight:600;color:var(--ink-500);text-transform:uppercase;letter-spacing:.05em;padding:12px 16px;border-top:0;border-bottom:1px solid var(--border-1)}
 .inv.head + .inv{border-top:0}
+.inv.stf{grid-template-columns:minmax(0,1fr) minmax(0,1fr) 180px 180px 36px}
 .cell{display:flex;flex-direction:column;min-width:0}
 .cell-l{display:none;font-size:11px;font-weight:600;color:var(--ink-500);text-transform:uppercase;letter-spacing:.05em;margin:0 0 2px 10px}
 .edit{height:36px;padding:0 10px;border:1px solid transparent;border-radius:8px;background:transparent;outline:none;min-width:0;width:100%;font-size:14px}
@@ -131,17 +137,17 @@ select.edit{padding:0 6px;cursor:pointer}
   .stats{grid-template-columns:repeat(3,minmax(0,1fr))}
   .am-row{grid-template-columns:minmax(0,1fr) 56px 76px 44px 50px 44px 64px;padding:11px 16px}
   .am-row > :last-child{display:none}
-  .inv{grid-template-columns:160px minmax(0,1.2fr) minmax(0,1fr) 130px auto 36px}
   .resp button{padding:0 12px}
 }
-@media (max-width:1024px){
+/* The invite row has 7 columns, so switch to cards before it gets cramped. */
+@media (max-width:1240px){
   .table-wrap{border:0 !important;background:transparent !important;display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px}
-  #list{display:contents}
+  #list,#staff-list{display:contents}
   .inv.head{display:none}
-  .inv{grid-template-columns:1fr 1fr;gap:6px;border:1px solid var(--border-1) !important;border-radius:12px;background:#fff;padding:10px 8px;position:relative;align-content:start}
+  .inv,.inv.stf{grid-template-columns:1fr 1fr;gap:6px;border:1px solid var(--border-1) !important;border-radius:12px;background:#fff;padding:10px 8px;position:relative;align-content:start}
   .cell-l{display:block}
-  .cell.c-cust,.cell.c-am,.cell.c-resp{grid-column:1/-1}
-  .cell.c-cust{order:-1;padding-right:36px}
+  .cell.c-cust,.cell.c-am,.cell.c-resp,.cell.c-name,.cell.c-co{grid-column:1/-1}
+  .cell.c-cust,.cell.c-name{order:-1;padding-right:36px}
   .resp{width:100%;display:grid;grid-template-columns:1fr 1fr;border-radius:20px}
   .resp button{height:40px;font-size:14px}
   .del{position:absolute;top:8px;right:8px}

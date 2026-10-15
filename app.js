@@ -9,10 +9,15 @@ const CUTOFF = new Date(2026, 9, 16);
 // confirmed = has formally RSVP'd; yes = wants to attend but has not RSVP'd yet.
 const RESP = [['confirmed','Confirmed'],['yes','Yes'],['maybe','Maybe'],['no','No']];
 const DEMO = !SUPABASE_URL || SUPABASE_URL.includes('YOUR-') || !SUPABASE_ANON_KEY || SUPABASE_ANON_KEY.includes('YOUR-');
-const DEMO_KEY = 'founder-breakfast-demo-invites';
+const DIETS = ['No Preference','Vegetarian','Vegan','Halaal','Kosher','Gluten-free','Dairy-free'];
+// Customer invites and staff attending are kept in separate tables that work the same way.
+const TABLES = {
+  invites: { demoKey: 'founder-breakfast-demo-invites', blank: { account_manager: null, customer: '', contact: '', telephone: '', dietary: null, response: null } },
+  staff:   { demoKey: 'founder-breakfast-demo-staff',   blank: { company: '', name: '', telephone: '', dietary: null } },
+};
 
 let sb = null;
-const state = { user: null, invites: [], tab: 'dashboard', query: '', am: '', resp: 'all', loaded: false, pending: false };
+const state = { user: null, invites: [], staff: [], tab: 'dashboard', query: '', am: '', resp: 'all', loaded: false, pending: false };
 
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
@@ -23,40 +28,40 @@ function setSync(kind, text) { const s = $('#sync'); if (!s) return; s.className
 
 /* ---------- Data layer ---------- */
 const db = {
-  async load() {
+  async load(table) {
     if (DEMO) {
-      const saved = localStorage.getItem(DEMO_KEY);
+      const saved = localStorage.getItem(TABLES[table].demoKey);
       return saved ? JSON.parse(saved) : [];
     }
-    const { data, error } = await sb.from('invites').select('*').order('created_at', { ascending: false });
+    const { data, error } = await sb.from(table).select('*').order('created_at', { ascending: false });
     if (error) throw error;
     return data;
   },
-  saveDemo() { localStorage.setItem(DEMO_KEY, JSON.stringify(state.invites)); },
-  async insert() {
-    const row = { account_manager: null, customer: '', contact: '', telephone: '', response: null };
-    if (DEMO) { const r = { ...row, id: crypto.randomUUID(), created_at: new Date().toISOString() }; state.invites.unshift(r); db.saveDemo(); return r; }
-    const { data, error } = await sb.from('invites').insert(row).select().single();
+  saveDemo(table) { localStorage.setItem(TABLES[table].demoKey, JSON.stringify(state[table])); },
+  async insert(table) {
+    const row = { ...TABLES[table].blank };
+    if (DEMO) { const r = { ...row, id: crypto.randomUUID(), created_at: new Date().toISOString() }; state[table].unshift(r); db.saveDemo(table); return r; }
+    const { data, error } = await sb.from(table).insert(row).select().single();
     if (error) throw error;
-    upsertLocal(data);
+    upsertLocal(table, data);
     return data;
   },
-  async update(id, patch) {
-    const inv = state.invites.find(x => x.id === id); if (inv) Object.assign(inv, patch);
-    if (DEMO) return db.saveDemo();
-    const { error } = await sb.from('invites').update(patch).eq('id', id);
+  async update(table, id, patch) {
+    const x = state[table].find(x => x.id === id); if (x) Object.assign(x, patch);
+    if (DEMO) return db.saveDemo(table);
+    const { error } = await sb.from(table).update(patch).eq('id', id);
     if (error) throw error;
   },
-  async remove(id) {
-    state.invites = state.invites.filter(x => x.id !== id);
-    if (DEMO) return db.saveDemo();
-    const { error } = await sb.from('invites').delete().eq('id', id);
+  async remove(table, id) {
+    state[table] = state[table].filter(x => x.id !== id);
+    if (DEMO) return db.saveDemo(table);
+    const { error } = await sb.from(table).delete().eq('id', id);
     if (error) throw error;
   },
 };
-function upsertLocal(row) {
-  const i = state.invites.findIndex(x => x.id === row.id);
-  if (i >= 0) state.invites[i] = row; else state.invites.unshift(row);
+function upsertLocal(table, row) {
+  const i = state[table].findIndex(x => x.id === row.id);
+  if (i >= 0) state[table][i] = row; else state[table].unshift(row);
 }
 async function run(p, okText = 'All changes saved') {
   setSync('saving', 'Saving…');
@@ -64,7 +69,7 @@ async function run(p, okText = 'All changes saved') {
   catch (e) { console.error(e); setSync('err', 'Not saved'); toast('That change did not save. Check your connection and try again.'); await refresh(); }
 }
 async function refresh() {
-  try { state.invites = await db.load(); state.loaded = true; dataChanged(); }
+  try { [state.invites, state.staff] = await Promise.all([db.load('invites'), db.load('staff')]); state.loaded = true; dataChanged(); }
   catch (e) { console.error(e); toast('Could not load invites: ' + (e.message || e)); }
 }
 
@@ -138,6 +143,9 @@ function dashboardView() {
   const unassigned = stats(state.invites.filter(x => !x.account_manager));
   if (unassigned.total) per.push({ name: 'Not assigned', ...unassigned });
   const max = Math.max(1, ...per.map(p => p.total));
+  // Catering counts everyone Confirmed or Yes, plus staff.
+  const guests = state.invites.filter(x => x.response === 'confirmed' || x.response === 'yes');
+  const people = guests.concat(state.staff);
   return `${heroView()}
 <div class="page">
   <div class="stats num">
@@ -151,6 +159,10 @@ function dashboardView() {
   <div class="panel" style="padding:24px">
     <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-bottom:14px;flex-wrap:wrap"><h2 style="font-size:16px;margin:0">Response split</h2><span class="muted">${s.total - s.awaiting} of ${s.total} responded</span></div>
     ${barView(s)}
+  </div>
+  <div class="panel">
+    <div class="panel-h"><h2>Catering</h2><span class="muted">${guests.length} ${guests.length === 1 ? 'guest' : 'guests'} (Confirmed or Yes) + ${state.staff.length} staff = ${people.length} people</span></div>
+    <div class="diets num">${DIETS.map(d => `<span class="diet"><b>${people.filter(x => x.dietary === d).length}</b>${esc(d)}</span>`).join('')}<span class="diet await"><b>${people.filter(x => !x.dietary).length}</b>Not captured</span></div>
   </div>
   <div class="panel">
     <div class="panel-h"><h2>By Account Manager</h2>
@@ -188,12 +200,24 @@ function invitesView() {
     <div class="chips" id="chips"></div>
   </div>
   <div class="panel table-wrap">
-    <div class="inv head"><div>Account Manager</div><div>Customer</div><div>Contact</div><div>Telephone</div><div>Response</div><div></div></div>
+    <div class="inv head"><div>Account Manager</div><div>Customer</div><div>Contact</div><div>Telephone</div><div>Dietary</div><div>Response</div><div></div></div>
     <div id="list"></div>
+  </div>
+  <div class="page-head">
+    <div><h2>Staff</h2><p id="staff-sub"></p></div>
+    <div class="page-actions"><button class="btn btn-primary" id="add-staff">Add staff</button></div>
+  </div>
+  <div class="panel table-wrap">
+    <div class="inv stf head"><div>Company</div><div>Name</div><div>Contact number</div><div>Dietary</div><div></div></div>
+    <div id="staff-list"></div>
   </div>
   <div class="foot"><span>Changes save automatically and appear for everyone.</span><span class="sync" id="sync"><i></i>${DEMO ? 'Saved in this browser' : 'Up to date'}</span></div>
 </div>`;
 }
+
+const dietView = v => `<label class="cell c-diet"><span class="cell-l">Dietary</span>
+    <select class="edit ${v ? '' : 'missing'}" data-f="dietary"><option value="">Select dietary</option>${DIETS.map(d => `<option ${v === d ? 'selected' : ''}>${esc(d)}</option>`).join('')}</select></label>`;
+const delView = what => `<button class="del" type="button" title="Remove ${what}" aria-label="Remove ${what}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/></svg></button>`;
 
 function rowView(x) {
   return `<div class="inv" data-id="${esc(x.id)}">
@@ -202,8 +226,19 @@ function rowView(x) {
   <label class="cell c-cust"><span class="cell-l">Customer</span><input class="edit strong" data-f="customer" value="${esc(x.customer)}" placeholder="Customer"></label>
   <label class="cell c-contact"><span class="cell-l">Contact</span><input class="edit" data-f="contact" value="${esc(x.contact)}" placeholder="Contact name"></label>
   <label class="cell c-tel"><span class="cell-l">Telephone</span><input class="edit num" data-f="telephone" type="tel" value="${esc(x.telephone)}" placeholder="+27"></label>
+  ${dietView(x.dietary)}
   <div class="cell c-resp"><span class="cell-l">Response</span><div class="resp">${RESP.map(([k, l]) => `<button type="button" data-r="${k}" class="${x.response === k ? 'on-' + k : ''}">${l}</button>`).join('')}</div></div>
-  <button class="del" type="button" title="Remove invite" aria-label="Remove invite"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/></svg></button>
+  ${delView('invite')}
+</div>`;
+}
+
+function staffRowView(x) {
+  return `<div class="inv stf" data-id="${esc(x.id)}">
+  <label class="cell c-co"><span class="cell-l">Company</span><input class="edit" data-f="company" value="${esc(x.company)}" placeholder="Company name"></label>
+  <label class="cell c-name"><span class="cell-l">Name</span><input class="edit strong" data-f="name" value="${esc(x.name)}" placeholder="Staff name"></label>
+  <label class="cell c-tel"><span class="cell-l">Contact number</span><input class="edit num" data-f="telephone" type="tel" value="${esc(x.telephone)}" placeholder="+27"></label>
+  ${dietView(x.dietary)}
+  ${delView('staff member')}
 </div>`;
 }
 
@@ -215,7 +250,11 @@ function renderList() {
     .map(([k, l, n]) => `<button class="chip ${state.resp === k ? 'on' : ''}" data-filter="${k}">${l} · ${n}</button>`).join('');
   $('#list').innerHTML = list.length ? list.map(rowView).join('')
     : `<div class="empty">${state.invites.length ? 'No invites match these filters.' : 'No invites yet. Select Add invite to start the list.'}</div>`;
+  $('#staff-sub').textContent = `${state.staff.length} staff attending`;
+  $('#staff-list').innerHTML = state.staff.length ? state.staff.map(staffRowView).join('')
+    : '<div class="empty">No staff yet. Select Add staff to start the list.</div>';
 }
+const editing = () => ['#list', '#staff-list'].some(s => $(s)?.contains(document.activeElement));
 
 function renderMain() {
   document.querySelectorAll('.tab').forEach(t => t.classList.toggle('on', t.dataset.tab === state.tab));
@@ -236,18 +275,19 @@ function dataChanged() {
   if (!state.user || !$('#main')) return;
   if (state.tab === 'dashboard') return renderMain();
   if (!$('#list')) return renderMain();
-  if ($('#list').contains(document.activeElement)) { state.pending = true; return; }
+  if (editing()) { state.pending = true; return; }
   renderList();
 }
 
 /* ---------- Export ---------- */
-// Door list of everyone Confirmed or Yes, as a CSV that opens in Excel. Confirmed are listed first.
+// Door list of everyone Confirmed or Yes, then staff, as a CSV that opens in Excel. Confirmed are listed first.
 const STATUS = { confirmed: 'Confirmed', yes: 'Yes - not RSVP\'d yet' };
 function exportGuests() {
   const yes = state.invites.filter(x => STATUS[x.response])
     .sort((a, b) => (a.response === b.response ? 0 : a.response === 'confirmed' ? -1 : 1)
       || (a.customer || '').localeCompare(b.customer || '') || (a.contact || '').localeCompare(b.contact || ''));
-  if (!yes.length) return toast('No one is Confirmed or Yes yet.');
+  const staff = [...state.staff].sort((a, b) => (a.company || '').localeCompare(b.company || '') || (a.name || '').localeCompare(b.name || ''));
+  if (!yes.length && !staff.length) return toast('No one is Confirmed or Yes yet, and no staff are listed.');
   const n = yes.filter(x => x.response === 'confirmed').length;
   const cell = v => {
     let t = String(v ?? '');
@@ -255,19 +295,21 @@ function exportGuests() {
     return '"' + t.replace(/"/g, '""') + '"';
   };
   const tel = v => v ? '="' + String(v).replace(/"/g, '') + '"' : '';   // keep leading 0 and +27
-  const rows = [['Status', 'Customer', 'Contact', 'Telephone', 'Account Manager', 'Arrived'].map(cell).join(',')]
-    .concat(yes.map(x => [cell(STATUS[x.response]), cell(x.customer), cell(x.contact), tel(x.telephone), cell(x.account_manager || 'Not assigned'), cell('')].join(',')))
+  const rows = [['Status', 'Company', 'Name', 'Telephone', 'Dietary', 'Account Manager', 'Arrived'].map(cell).join(',')]
+    .concat(yes.map(x => [cell(STATUS[x.response]), cell(x.customer), cell(x.contact), tel(x.telephone), cell(x.dietary), cell(x.account_manager || 'Not assigned'), cell('')].join(',')))
+    .concat(staff.map(x => [cell('Staff'), cell(x.company), cell(x.name), tel(x.telephone), cell(x.dietary), cell(''), cell('')].join(',')))
     .concat(['', [cell('Key'), cell('')].join(','),
       [cell('Confirmed'), cell('Has RSVP\'d: attendance confirmed')].join(','),
       [cell('Yes - not RSVP\'d yet'), cell('Wants to attend but has not RSVP\'d yet: follow up')].join(','),
-      '', [cell('Totals'), cell(`${n} Confirmed, ${yes.length - n} Yes, ${yes.length} in all`)].join(',')]);
+      [cell('Staff'), cell('Staff attending')].join(','),
+      '', [cell('Totals'), cell(`${n} Confirmed, ${yes.length - n} Yes, ${staff.length} Staff, ${yes.length + staff.length} in all`)].join(',')]);
   const blob = new Blob(['\ufeff' + rows.join('\r\n')], { type: 'text/csv;charset=utf-8' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = `Founder Breakfast - Guest list - ${new Date().toISOString().slice(0, 10)}.csv`;
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-  toast(`Exported ${yes.length} ${yes.length === 1 ? 'guest' : 'guests'}: ${n} Confirmed, ${yes.length - n} Yes.`);
+  toast(`Exported ${yes.length} ${yes.length === 1 ? 'guest' : 'guests'} (${n} Confirmed, ${yes.length - n} Yes) and ${staff.length} staff.`);
 }
 
 /* ---------- Events ---------- */
@@ -296,25 +338,31 @@ document.addEventListener('click', async e => {
   if (t.closest('#add')) {
     state.resp = 'all'; state.query = ''; state.am = '';
     renderMain();
-    await run(db.insert().then(r => { renderList(); const row = document.querySelector(`[data-id="${CSS.escape(r.id)}"]`); if (row) { row.classList.add('flash'); row.querySelector('select').focus(); } }));
+    await run(db.insert('invites').then(r => { renderList(); const row = document.querySelector(`[data-id="${CSS.escape(r.id)}"]`); if (row) { row.classList.add('flash'); row.querySelector('select').focus(); } }));
+    return;
+  }
+  if (t.closest('#add-staff')) {
+    await run(db.insert('staff').then(r => { renderList(); const row = document.querySelector(`[data-id="${CSS.escape(r.id)}"]`); if (row) { row.classList.add('flash'); row.querySelector('input').focus(); } }));
     return;
   }
   const chip = t.closest('[data-filter]');
   if (chip) { state.resp = chip.dataset.filter; renderList(); return; }
   const row = t.closest('.inv[data-id]'); if (!row) return;
   const id = row.dataset.id;
+  const table = row.classList.contains('stf') ? 'staff' : 'invites';
   const rb = t.closest('[data-r]');
   if (rb) {
     const inv = state.invites.find(x => x.id === id);
     const next = inv.response === rb.dataset.r ? null : rb.dataset.r;
-    await run(db.update(id, { response: next }));
+    await run(db.update('invites', id, { response: next }));
     renderList();
     return;
   }
   if (t.closest('.del')) {
-    const inv = state.invites.find(x => x.id === id);
-    if (!confirm(`Remove ${inv.customer || 'this invite'} from the list?`)) return;
-    await run(db.remove(id));
+    const x = state[table].find(x => x.id === id);
+    const label = table === 'staff' ? (x.name || 'this staff member') : (x.customer || 'this invite');
+    if (!confirm(`Remove ${label} from the list?`)) return;
+    await run(db.remove(table, id));
     renderList();
   }
 });
@@ -323,15 +371,17 @@ document.addEventListener('change', async e => {
   const t = e.target;
   if (t.id === 'amf') { state.am = t.value; renderList(); return; }
   const f = t.dataset.f; if (!f) return;
-  const id = t.closest('.inv').dataset.id;
-  const value = f === 'account_manager' ? (t.value || null) : t.value.trim();
-  if (f === 'account_manager') t.classList.toggle('missing', !value);
-  await run(db.update(id, { [f]: value }));
+  const row = t.closest('.inv');
+  const table = row.classList.contains('stf') ? 'staff' : 'invites';
+  const isSelect = f === 'account_manager' || f === 'dietary';
+  const value = isSelect ? (t.value || null) : t.value.trim();
+  if (isSelect) t.classList.toggle('missing', !value);
+  await run(db.update(table, row.dataset.id, { [f]: value }));
 });
 
 document.addEventListener('input', e => { if (e.target.id === 'q') { state.query = e.target.value; renderList(); } });
 document.addEventListener('focusout', () => setTimeout(() => {
-  if (state.pending && !($('#list') && $('#list').contains(document.activeElement))) { state.pending = false; renderList(); }
+  if (state.pending && $('#list') && !editing()) { state.pending = false; renderList(); }
 }, 0));
 document.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.classList.contains('edit')) e.target.blur(); });
 
@@ -351,19 +401,21 @@ async function boot() {
   if (DEMO) { await signedIn({ email: 'demo@' + ALLOWED_DOMAINS[0] }); return; }
   const { createClient } = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm');
   sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  const live = p => {
+    if (p.eventType === 'DELETE') state[p.table] = state[p.table].filter(x => x.id !== p.old.id);
+    else upsertLocal(p.table, p.new);
+    dataChanged();
+  };
   sb.channel('invites-live')
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'invites' }, p => {
-      if (p.eventType === 'DELETE') state.invites = state.invites.filter(x => x.id !== p.old.id);
-      else upsertLocal(p.new);
-      dataChanged();
-    })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'invites' }, live)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'staff' }, live)
     .subscribe();
   const { data: { session } } = await sb.auth.getSession();
   sb.auth.onAuthStateChange((_ev, s) => {
     const u = s?.user || null;
     if ((u?.id) === (state.user?.id)) return;
     if (u && !allowedEmail(u.email)) { sb.auth.signOut(); state.user = null; return render('Only ' + DOMAINS_TEXT + ' accounts can use this tracker.', true); }
-    if (u) signedIn(u); else { state.user = null; state.invites = []; state.loaded = false; render(); }
+    if (u) signedIn(u); else { state.user = null; state.invites = []; state.staff = []; state.loaded = false; render(); }
   });
   if (session?.user) signedIn(session.user); else render();
 }

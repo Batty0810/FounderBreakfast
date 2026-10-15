@@ -18,7 +18,28 @@ alter table public.invites drop constraint if exists invites_response_check;
 alter table public.invites add constraint invites_response_check
   check (response in ('confirmed', 'yes', 'no', 'maybe'));
 
--- Record who last changed each invite, and when.
+-- Staff attending the breakfast.
+create table if not exists public.staff (
+  id          uuid primary key default gen_random_uuid(),
+  company     text not null default '',
+  name        text not null default '',
+  telephone   text not null default '',
+  dietary     text,
+  created_at  timestamptz not null default now(),
+  updated_at  timestamptz not null default now(),
+  updated_by  text
+);
+
+-- Dietary requirements for customers and staff (empty = not captured yet).
+alter table public.invites add column if not exists dietary text;
+alter table public.invites drop constraint if exists invites_dietary_check;
+alter table public.invites add constraint invites_dietary_check
+  check (dietary in ('No Preference', 'Vegetarian', 'Vegan', 'Halaal', 'Kosher', 'Gluten-free', 'Dairy-free'));
+alter table public.staff drop constraint if exists staff_dietary_check;
+alter table public.staff add constraint staff_dietary_check
+  check (dietary in ('No Preference', 'Vegetarian', 'Vegan', 'Halaal', 'Kosher', 'Gluten-free', 'Dairy-free'));
+
+-- Record who last changed each invite or staff member, and when.
 create or replace function public.touch_invite() returns trigger
 language plpgsql as $$
 begin
@@ -31,7 +52,11 @@ drop trigger if exists invites_touch on public.invites;
 create trigger invites_touch before insert or update on public.invites
   for each row execute function public.touch_invite();
 
--- Only signed-in @nymbis.cloud and @voxtelecom.co.za users can read or change invites.
+drop trigger if exists staff_touch on public.staff;
+create trigger staff_touch before insert or update on public.staff
+  for each row execute function public.touch_invite();
+
+-- Only signed-in @nymbis.cloud and @voxtelecom.co.za users can read or change invites and staff.
 create or replace function public.email_allowed() returns boolean language sql stable as $$
   select (auth.jwt() ->> 'email') ilike '%@nymbis.cloud'
       or (auth.jwt() ->> 'email') ilike '%@voxtelecom.co.za';
@@ -54,12 +79,33 @@ create policy "nymbis update" on public.invites for update to authenticated
 create policy "nymbis delete" on public.invites for delete to authenticated
   using (public.email_allowed());
 
+alter table public.staff enable row level security;
+
+drop policy if exists "nymbis read"   on public.staff;
+drop policy if exists "nymbis insert" on public.staff;
+drop policy if exists "nymbis update" on public.staff;
+drop policy if exists "nymbis delete" on public.staff;
+
+create policy "nymbis read"   on public.staff for select to authenticated
+  using (public.email_allowed());
+create policy "nymbis insert" on public.staff for insert to authenticated
+  with check (public.email_allowed());
+create policy "nymbis update" on public.staff for update to authenticated
+  using (public.email_allowed())
+  with check (public.email_allowed());
+create policy "nymbis delete" on public.staff for delete to authenticated
+  using (public.email_allowed());
+
 -- Live updates: everyone sees changes as they happen.
-do $$ begin
-  if not exists (select 1 from pg_publication_tables
-                 where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'invites') then
-    alter publication supabase_realtime add table public.invites;
-  end if;
+do $$
+declare t text;
+begin
+  foreach t in array array['invites', 'staff'] loop
+    if not exists (select 1 from pg_publication_tables
+                   where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = t) then
+      execute format('alter publication supabase_realtime add table public.%I', t);
+    end if;
+  end loop;
 end $$;
 
 -- Team password: everyone signs in with their work email and one shared password.
